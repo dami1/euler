@@ -89,7 +89,7 @@ hr{border:0; border-top:1px solid var(--rule); margin:2.6em 0}
 <body>
 
 <h1>Harmonias de Euler</h1>
-<p class="lede">O acorde como conjunto de divisores. Por que gênero e espécie são parâmetros independentes, e o que isso libera para quem compõe.</p>
+<p class="lede">O acorde como conjunto de divisores.</p>
 
 <a class="vid" href="https://youtu.be/f4FDdQPrUa8?is=v7_An1rr1i86nEdp" target="_blank" rel="noopener">
   <span class="k">vídeo — assista antes</span>
@@ -291,7 +291,7 @@ hr{border:0; border-top:1px solid var(--rule); margin:2.6em 0}
 </table>
 </div>
 
-<p class="note">Notas fora das 88 teclas aparecem em vermelho. O gradus de cada harmônico segue a receita de Euler: cada fator 2 custa 1, cada 3 custa 2, cada 5 custa 4, some tudo e acrescente 1.</p>
+<p class="note">Notas fora das 88 teclas aparecem em vermelho. Acima de 116 em número MIDI elas saem da partitura mas continuam na tabela, e a reprodução usa no máximo 60 vozes. Os expoentes vão até 6 cada, o que leva o exponens a 2⁶·3⁶·5⁶ e o acorde a 343 notas em vinte e nove oitavas — bem além de qualquer instrumento, mas a estrutura numérica continua legível. O gradus de cada harmônico segue a receita de Euler: cada fator 2 custa 1, cada 3 custa 2, cada 5 custa 4, some tudo e acrescente 1.</p>
 
 <script>
 /* ---------- núcleo ---------- */
@@ -432,7 +432,8 @@ function tone(f,t0,dur,amp){
   o.connect(g).connect(ac.destination); o.start(t0); o.stop(t0+dur+1); live.push({o,g});}
 function sound(list,mode,tet){
   ctx(); stopAll();
-  const ns=list.filter(x=>x.freq<17000), t0=ac.currentTime+.05;
+  // acima de 60 osciladores simultâneos o áudio satura; corta o excedente agudo
+  const ns=list.filter(x=>x.freq<17000).slice(0,60), t0=ac.currentTime+.05;
   const amp=Math.min(.2,1.1/Math.max(ns.length,1));
   ns.forEach((x,i)=>{ const f=tet?mfreq(x.midi):x.freq;
     if(mode==='arp') tone(f,t0+i*.26,5.2,amp*1.7); else tone(f,t0,5.2,amp); });
@@ -508,16 +509,19 @@ function gRender(){
   if(S2.fold){const seen={};
     list=list.filter(x=>{const k=((x.midi%12)+12)%12; if(seen[k])return false; seen[k]=1; return true;})
       .sort((p,q)=>p.midi-q.midi);}
+  // a pauta só comporta até pouco acima do teclado; o resto segue na tabela
+  const draw=list.filter(x=>x.midi<=116), over=list.length-draw.length;
   document.getElementById('gExp').textContent=exp;
   document.getElementById('gFac').innerHTML=facStr(exp);
   document.getElementById('gStat').innerHTML=
-    `${list.length} notas · ${list.filter(x=>x.piano).length} no piano · gradus ${gradus(exp)} · `
-    +`${[...new Set(list.map(x=>mname(x.midi).replace(/-?\d+$/,'')))].join(' ')}`;
+    `${list.length} notas · ${list.filter(x=>x.piano).length} no piano · gradus ${gradus(exp)}`
+    +(over?` · <span style="color:var(--bad)">${over} acima do registro grafável</span>`:'')
+    +` · ${[...new Set(list.map(x=>mname(x.midi).replace(/-?\d+$/,'')))].join(' ')}`;
   document.getElementById('gA').textContent=S2.a;
   document.getElementById('gB').textContent=S2.b;
   document.getElementById('gC').textContent=S2.c;
   document.getElementById('gFund').textContent=mname(S2.fund)+' · '+mfreq(S2.fund).toFixed(1).replace('.',',')+' Hz';
-  document.getElementById('gBox').innerHTML=scoreSVG([list],{colW:170,cents:!S2.tet});
+  document.getElementById('gBox').innerHTML=scoreSVG([draw],{colW:170,cents:!S2.tet});
   document.getElementById('gRows').innerHTML=list.map(x=>{
     const dev=S2.tet?'0':(x.dev>0?'+':'')+x.dev.toFixed(1);
     const f=S2.tet?mfreq(x.midi):x.freq;
@@ -528,8 +532,8 @@ function gRender(){
   window.__glist=list;
 }
 document.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{
-  const k=b.dataset.g,d=+b.dataset.d, lim=k==='a'?5:(k==='b'?4:3);
-  S2[k]=Math.max(0,Math.min(lim,S2[k]+d)); gRender();});
+  const k=b.dataset.g,d=+b.dataset.d;
+  S2[k]=Math.max(0,Math.min(6,S2[k]+d)); gRender();});
 document.getElementById('gFundR').oninput=e=>{S2.fund=+e.target.value; gRender();};
 function pair(x,y,fn){const A=document.getElementById(x),B=document.getElementById(y);
   A.onclick=()=>{A.setAttribute('aria-pressed','true');B.setAttribute('aria-pressed','false');fn(0);gRender()};
