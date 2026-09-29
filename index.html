@@ -267,6 +267,15 @@ hr{border:0; border-top:1px solid var(--rule); margin:2.6em 0}
   </div>
 
   <div class="fld">
+    <label>Grafia</label>
+    <div class="row">
+      <button id="gVChord" aria-pressed="true">acorde</button>
+      <button id="gVArp" aria-pressed="false">arpejo</button>
+      <span class="slab">o arpejo abre as notas em sequência, uma por coluna</span>
+    </div>
+  </div>
+
+  <div class="fld">
     <label>Afinação</label>
     <div class="row">
       <button id="gJust" aria-pressed="true">justa</button>
@@ -500,7 +509,7 @@ function buildCard(el){
 document.querySelectorAll('[data-demo]').forEach(buildCard);
 
 /* ---------- gerador ---------- */
-const S2={a:1,b:1,c:2,fund:24,fold:false,tet:false};
+const S2={a:1,b:1,c:2,fund:24,fold:false,tet:false,arp:false};
 function gRender(){
   const exp=Math.round(Math.pow(2,S2.a)*Math.pow(3,S2.b)*Math.pow(5,S2.c));
   let ds=divs(S2.a,S2.b,S2.c);
@@ -521,7 +530,12 @@ function gRender(){
   document.getElementById('gB').textContent=S2.b;
   document.getElementById('gC').textContent=S2.c;
   document.getElementById('gFund').textContent=mname(S2.fund)+' · '+mfreq(S2.fund).toFixed(1).replace('.',',')+' Hz';
-  document.getElementById('gBox').innerHTML=scoreSVG([draw],{colW:170,cents:!S2.tet});
+  // arpejo: uma nota por coluna, com número e desvio no rótulo inferior
+  document.getElementById('gBox').innerHTML = S2.arp
+    ? scoreSVG(draw.map(x=>[x]),{colW:56,nums:false,seps:false,
+        labels:draw.map(x=>x.n+((!S2.tet&&Math.abs(x.dev)>=2)
+          ?`<tspan dx="2" font-size="7" fill="var(--c5)">${x.dev>0?'+':'−'}${Math.abs(x.dev).toFixed(0)}</tspan>`:''))})
+    : scoreSVG([draw],{colW:170,cents:!S2.tet});
   document.getElementById('gRows').innerHTML=list.map(x=>{
     const dev=S2.tet?'0':(x.dev>0?'+':'')+x.dev.toFixed(1);
     const f=S2.tet?mfreq(x.midi):x.freq;
@@ -539,6 +553,7 @@ function pair(x,y,fn){const A=document.getElementById(x),B=document.getElementBy
   A.onclick=()=>{A.setAttribute('aria-pressed','true');B.setAttribute('aria-pressed','false');fn(0);gRender()};
   B.onclick=()=>{B.setAttribute('aria-pressed','true');A.setAttribute('aria-pressed','false');fn(1);gRender()};}
 pair('gOpen','gFold',i=>S2.fold=!!i);
+pair('gVChord','gVArp',i=>S2.arp=!!i);
 pair('gJust','gTet',i=>S2.tet=!!i);
 document.getElementById('gArp').onclick=()=>sound(window.__glist,'arp',S2.tet);
 document.getElementById('gBlock').onclick=()=>sound(window.__glist,'block',S2.tet);
